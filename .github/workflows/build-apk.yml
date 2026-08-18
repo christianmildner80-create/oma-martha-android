@@ -36,6 +36,9 @@ jobs:
       - name: Minimale Android-Version auf 23 setzen (Zebra TC75x = Android 6.0)
         run: sed -i "s/minSdkVersion = .*/minSdkVersion = 23/" android/variables.gradle
 
+      - name: App-Icon aus assets/icon.png generieren
+        run: npx @capacitor/assets generate --android
+
       - name: Konfiguration synchronisieren
         run: npx cap sync android
 
