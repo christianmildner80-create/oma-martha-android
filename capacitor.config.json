@@ -1,0 +1,12 @@
+{
+  "appId": "de.frankleben.omamartha",
+  "appName": "Oma Martha",
+  "webDir": "www",
+  "server": {
+    "url": "https://oma-martha-frankleben.de/imbiss/",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
