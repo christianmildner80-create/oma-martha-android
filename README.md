@@ -17,6 +17,11 @@ Enthaelt außerdem das Plugin `@capacitor/local-notifications` fuer die täglich
 der Erinnerung passiert im Code der Webseite selbst (`assets/js/kuechenschluss_erinnerung.js`),
 nicht hier in der App-Huelle.
 
+Außerdem `@capacitor/filesystem` + `@capacitor/share` (Christian, 19.08.2026: Web-Share-API/
+Blob-Download fuer Beweisfotos funktionieren im WebView der nativen App nicht zuverlaessig -
+"das läuft über die apk" war die Ursache) - genutzt in
+`modules/beweisfotos/index.php` fuer echtes Herunterladen/Teilen innerhalb der App.
+
 ## Weg 1: Kostenlos ueber GitHub Actions bauen lassen (empfohlen, kein eigener PC noetig)
 
 Dieses Verzeichnis enthaelt `.github/workflows/build-apk.yml` - baut die APK automatisch bei
