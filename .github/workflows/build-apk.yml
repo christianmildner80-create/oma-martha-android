@@ -27,18 +27,10 @@ jobs:
       - name: Android SDK einrichten
         uses: android-actions/setup-android@v3
 
-      - name: TEMP - festen Debug-Keystore erzeugen und als Artefakt bereitstellen
+      - name: Festen Debug-Keystore einsetzen (sonst signiert jeder Build anders und Updates schlagen fehl)
         run: |
-          keytool -genkeypair -v -keystore /tmp/oma-martha-debug.keystore \
-            -storepass android -keypass android \
-            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=Oma Martha Debug,O=Oma Martha,C=DE"
-
-      - name: TEMP - Keystore hochladen
-        uses: actions/upload-artifact@v4
-        with:
-          name: oma-martha-debug-keystore
-          path: /tmp/oma-martha-debug.keystore
+          mkdir -p ~/.android
+          cp oma-martha-debug.keystore ~/.android/debug.keystore
 
       - name: Abhaengigkeiten installieren
         run: npm install
