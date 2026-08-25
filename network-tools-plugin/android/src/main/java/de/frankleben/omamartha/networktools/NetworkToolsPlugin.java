@@ -1,50 +1,34 @@
 package de.frankleben.omamartha.networktools;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 
+import androidx.core.content.ContextCompat;
+
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
-import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
-import com.getcapacitor.annotation.Permission;
-import com.getcapacitor.annotation.PermissionCallback;
 
 import java.util.HashSet;
 import java.util.List;
 
-@CapacitorPlugin(
-    name = "NetworkTools",
-    permissions = {
-        @Permission(strings = { android.Manifest.permission.ACCESS_FINE_LOCATION }, alias = "standort")
-    }
-)
+@CapacitorPlugin(name = "NetworkTools")
 public class NetworkToolsPlugin extends Plugin {
 
     @PluginMethod
     public void scanWifi(PluginCall call) {
-        if (getPermissionState("standort") != PermissionState.GRANTED) {
-            requestPermissionForAlias("standort", call, "scanWifiCallback");
+        if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            call.reject("Standort-Berechtigung fehlt - bitte in den Android-App-Einstellungen für Claude/Oma Martha den Standort-Zugriff erlauben");
             return;
         }
-        durchfuehrenScan(call);
-    }
 
-    @PermissionCallback
-    private void scanWifiCallback(PluginCall call) {
-        if (getPermissionState("standort") == PermissionState.GRANTED) {
-            durchfuehrenScan(call);
-        } else {
-            call.reject("Standort-Berechtigung wird für den WLAN-Scan benötigt");
-        }
-    }
-
-    private void durchfuehrenScan(PluginCall call) {
         WifiManager wifiManager = (WifiManager) getContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (!wifiManager.isWifiEnabled()) {
             wifiManager.setWifiEnabled(true);

@@ -42,15 +42,6 @@ jobs:
       - name: Konfiguration synchronisieren
         run: npx cap sync android
 
-      - name: Debug - Plugin-Einbindung in app-Modul pruefen
-        run: |
-          echo "--- android/app/capacitor.build.gradle ---"
-          cat android/app/capacitor.build.gradle || echo "Datei fehlt"
-          echo "--- android/settings.gradle ---"
-          cat android/settings.gradle || echo "Datei fehlt"
-          echo "--- android/capacitor.settings.gradle ---"
-          cat android/capacitor.settings.gradle || echo "Datei fehlt"
-
       - name: APK bauen (Debug, ungeeignet fuer Play Store aber fuer eigene Geraete ausreichend)
         working-directory: android
         run: ./gradlew assembleDebug
