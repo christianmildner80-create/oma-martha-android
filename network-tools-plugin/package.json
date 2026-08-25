@@ -1,0 +1,15 @@
+{
+  "name": "network-tools-plugin",
+  "version": "1.0.0",
+  "description": "Natives WLAN-Scan/Verbinden-Plugin fuer die Oma-Martha-App-Huelle (Zebra TC75x)",
+  "main": "dist/plugin.js",
+  "files": ["android"],
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": "^6.0.0"
+  }
+}
