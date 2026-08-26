@@ -28,6 +28,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Natives Bluetooth-LE-Plugin fuer den Niimbot B21S Etikettendrucker (26.08.2026, Christian:
@@ -56,6 +57,8 @@ public class NiimbotDruckerPlugin extends Plugin {
     // eine feste Mindestpause zwischen Paketen ist die von den Referenz-Implementierungen
     // (niimbluelib) genutzte, robustere Absicherung gegen verlorene/verschluckte Pakete).
     private static final long SCHREIB_PAUSE_MS = 20;
+    // Absicherung, falls requestMtu() vom Drucker nie beantwortet wird (siehe verbindeMitGeraet()).
+    private static final long MTU_FALLBACK_MS = 3000;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private BluetoothGatt gatt;
@@ -63,6 +66,7 @@ public class NiimbotDruckerPlugin extends Plugin {
     private BluetoothLeScanner scanner;
     private ScanCallback aktiverScanCallback;
     private PluginCall verbindenAufruf;
+    private final AtomicBoolean diensteWerdenErmittelt = new AtomicBoolean(false);
 
     @PluginMethod
     public void verbinden(PluginCall call) {
@@ -114,6 +118,7 @@ public class NiimbotDruckerPlugin extends Plugin {
     }
 
     private void verbindeMitGeraet(BluetoothDevice geraet) {
+        diensteWerdenErmittelt.set(false);
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -127,13 +132,40 @@ public class NiimbotDruckerPlugin extends Plugin {
             @Override
             public void onConnectionStateChange(BluetoothGatt g, int status, int newState) {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    g.discoverServices();
+                    // MTU-Aushandlung VOR discoverServices() (26.08.2026 - erster Testdruck kam trotz
+                    // "verbunden" nicht heraus: die Standard-BLE-MTU ist nur 23 Bytes/20 Nutzbytes,
+                    // ein Bildzeilen-Paket (PrintBitmapRow) bei 50mm Breite ist aber ca. 60 Bytes lang
+                    // und wird ohne Aushandlung von vielen Android-BLE-Stacks bei WRITE_TYPE_NO_RESPONSE
+                    // still abgeschnitten/verworfen, ohne dass ein Fehler zurückkommt - genau das
+                    // erklaert "verbunden" + Log-Zeilen, aber kein Ausdruck. discoverServices() folgt
+                    // erst in onMtuChanged(), damit die Aushandlung sicher vor dem Senden abgeschlossen ist.
+                    g.requestMtu(247);
+                    // Absicherung: manche billigen BLE-Stacks (z.B. simple Drucker-Chips) beantworten
+                    // requestMtu() gar nicht - dann darf der Verbindungsaufbau nicht ewig haengen.
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (diensteWerdenErmittelt.compareAndSet(false, true)) {
+                                g.discoverServices();
+                            }
+                        }
+                    }, MTU_FALLBACK_MS);
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     JSObject daten = new JSObject();
                     notifyListeners("getrennt", daten);
                     if (verbindenAufruf != null) {
                         beendeVerbindenMitFehler("Verbindung zum Drucker abgebrochen (Status " + status + ").");
                     }
+                }
+            }
+
+            @Override
+            public void onMtuChanged(BluetoothGatt g, int mtu, int status) {
+                // Egal ob die Aushandlung genau 247 ergeben hat oder der Drucker weniger akzeptiert
+                // hat (status kann auch != GATT_SUCCESS sein, dann bleibt die alte MTU) - in jedem
+                // Fall jetzt erst mit den Diensten weitermachen, nicht schon vorher parallel dazu.
+                if (diensteWerdenErmittelt.compareAndSet(false, true)) {
+                    g.discoverServices();
                 }
             }
 
