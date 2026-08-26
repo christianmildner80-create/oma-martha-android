@@ -1,0 +1,15 @@
+{
+  "name": "download-handler-plugin",
+  "version": "1.0.0",
+  "description": "Reicht Datei-Downloads (z.B. die APK-Update-Seite) aus der eingebetteten WebView an den System-Browser weiter, da die WebView selbst keine Downloads entgegennehmen kann",
+  "main": "dist/plugin.js",
+  "files": ["android"],
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": "^6.0.0"
+  }
+}
