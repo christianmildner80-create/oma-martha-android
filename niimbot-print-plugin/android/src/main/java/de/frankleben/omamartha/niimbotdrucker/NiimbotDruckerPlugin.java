@@ -51,11 +51,10 @@ public class NiimbotDruckerPlugin extends Plugin {
     private static final UUID CCCD_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
     private static final long SCAN_TIMEOUT_MS = 15000;
     private static final long VERBINDEN_TIMEOUT_MS = 20000;
-    // Kleine Pause nach jedem Schreiben (Forschungsergebnis 26.08.2026: WRITE_TYPE_NO_RESPONSE
-    // liefert auf vielen Android-BLE-Stacks kein verlaessliches onCharacteristicWrite-Callback -
-    // eine feste Mindestpause zwischen Paketen ist die von den Referenz-Implementierungen
-    // (niimbluelib) genutzte, robustere Absicherung gegen verlorene/verschluckte Pakete).
-    private static final long SCHREIB_PAUSE_MS = 20;
+    // Absicherungs-Timeout, falls onCharacteristicWrite() nie feuert (manche BLE-Stacks liefern
+    // das bei WRITE_TYPE_NO_RESPONSE nicht zuverlaessig) - dann wird trotzdem nach dieser Zeit
+    // weitergemacht, statt fuer immer zu haengen.
+    private static final long SCHREIB_TIMEOUT_MS = 200;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private BluetoothGatt gatt;
@@ -63,6 +62,13 @@ public class NiimbotDruckerPlugin extends Plugin {
     private BluetoothLeScanner scanner;
     private ScanCallback aktiverScanCallback;
     private PluginCall verbindenAufruf;
+    private PluginCall sendenAufruf;
+    private final Runnable sendenTimeoutRunnable = new Runnable() {
+        @Override
+        public void run() {
+            beendeSendenErfolgreich();
+        }
+    };
 
     @PluginMethod
     public void verbinden(PluginCall call) {
@@ -179,6 +185,15 @@ public class NiimbotDruckerPlugin extends Plugin {
                 daten.put("bytesBase64", Base64.encodeToString(characteristic.getValue(), Base64.NO_WRAP));
                 notifyListeners("antwort", daten);
             }
+
+            @Override
+            public void onCharacteristicWrite(BluetoothGatt g, BluetoothGattCharacteristic characteristic, int status) {
+                // Echtes Fertig-Signal vom BLE-Stack statt nur einer festen Pause (26.08.2026:
+                // "Bluetooth-Stack hat den Schreibvorgang abgelehnt" trat bei vielen tausend
+                // Schreibvorgaengen pro Etikett wiederholt auf - vermutlich weil die feste Pause
+                // manchmal nicht ausreichte, bevor der naechste Schreibvorgang gestartet wurde).
+                beendeSendenErfolgreich();
+            }
         });
     }
 
@@ -206,6 +221,10 @@ public class NiimbotDruckerPlugin extends Plugin {
             call.reject("Nicht mit dem Drucker verbunden - erst verbinden() aufrufen.");
             return;
         }
+        if (sendenAufruf != null) {
+            call.reject("Vorheriger Schreibvorgang noch nicht abgeschlossen.");
+            return;
+        }
         byte[] bytes = Base64.decode(bytesBase64, Base64.NO_WRAP);
         zielCharakteristik.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
         zielCharakteristik.setValue(bytes);
@@ -214,14 +233,21 @@ public class NiimbotDruckerPlugin extends Plugin {
             call.reject("Senden an den Drucker fehlgeschlagen (Bluetooth-Stack hat den Schreibvorgang abgelehnt).");
             return;
         }
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                JSObject ergebnis = new JSObject();
-                ergebnis.put("gesendet", true);
-                call.resolve(ergebnis);
-            }
-        }, SCHREIB_PAUSE_MS);
+        sendenAufruf = call;
+        // Auf das echte onCharacteristicWrite()-Signal warten statt blind eine feste Pause
+        // abzuwarten - mit Timeout als Absicherung, falls der Callback auf diesem Geraet doch
+        // nie feuert.
+        handler.postDelayed(sendenTimeoutRunnable, SCHREIB_TIMEOUT_MS);
+    }
+
+    private void beendeSendenErfolgreich() {
+        if (sendenAufruf == null) return;
+        handler.removeCallbacks(sendenTimeoutRunnable);
+        PluginCall aufruf = sendenAufruf;
+        sendenAufruf = null;
+        JSObject ergebnis = new JSObject();
+        ergebnis.put("gesendet", true);
+        aufruf.resolve(ergebnis);
     }
 
     @PluginMethod
@@ -241,5 +267,10 @@ public class NiimbotDruckerPlugin extends Plugin {
             gatt = null;
         }
         zielCharakteristik = null;
+        handler.removeCallbacks(sendenTimeoutRunnable);
+        if (sendenAufruf != null) {
+            sendenAufruf.reject("Verbindung zum Drucker getrennt.");
+            sendenAufruf = null;
+        }
     }
 }
