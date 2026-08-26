@@ -1,0 +1,15 @@
+{
+  "name": "niimbot-print-plugin",
+  "version": "1.0.0",
+  "description": "Natives Bluetooth-LE-Plugin fuer den Niimbot B21S Etikettendrucker (Oma-Martha-App-Huelle)",
+  "main": "dist/plugin.js",
+  "files": ["android"],
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": "^6.0.0"
+  }
+}

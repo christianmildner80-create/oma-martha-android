@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Legacy Bluetooth-Rechte (bis Android 11) - fuer den Zebra TC75x (Android 6) das
+         Relevante. ACCESS_FINE_LOCATION ist fuer BLE-Scan auf aelteren Android-Versionen
+         zwingend noetig, wird vom NetworkTools-Plugin bereits angefragt (kein Duplikat-Dialog). -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Moderne Rechte (Android 12+) - fuer dieses konkrete Geraet (TC75x, Android 6) nicht
+         relevant, aber schadet nicht, falls die App-Huelle je auf neuerer Hardware laeuft. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" tools:targetApi="s" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>
