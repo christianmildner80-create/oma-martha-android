@@ -287,6 +287,18 @@ public class NiimbotDruckerPlugin extends Plugin {
         trenneAlteVerbindung();
     }
 
+    // 30.08.2026, nach "Bluetooth-Stack hat den Schreibvorgang abgelehnt" auf einem Samsung S23+
+    // (aktuelles, leistungsfaehiges Geraet) gleich beim allerersten Schreibversuch: Android
+    // erlaubt pro GATT-Verbindung immer nur EINE Operation gleichzeitig - direkt nach dem
+    // Verbindungsaufbau (discoverServices + CCCD-Descriptor-Write) kann der GATT-Stack noch kurz
+    // intern beschaeftigt sein, auch wenn unser onDescriptorWrite-Callback schon gefeuert hat.
+    // writeCharacteristic() liefert dann sofort false zurueck (synchron, keine Ausnahme). Bisher
+    // wurde das als Endgueltig-Fehler an JS gemeldet; jetzt wird nativ ein paar Mal mit kurzer
+    // Pause erneut versucht, bevor aufgegeben wird - ergaenzt (nicht ersetzt) die bestehende
+    // Wiederholungslogik auf JS-Seite (sendeHaeppchenMitRetry in etikett.php/niimbot_testdruck.php).
+    private static final int SCHREIB_VERSUCHE = 5;
+    private static final long SCHREIB_WIEDERHOLUNG_PAUSE_MS = 60;
+
     @PluginMethod
     public void senden(PluginCall call) {
         String bytesBase64 = call.getString("bytesBase64");
@@ -299,11 +311,19 @@ public class NiimbotDruckerPlugin extends Plugin {
             return;
         }
         byte[] bytes = Base64.decode(bytesBase64, Base64.NO_WRAP);
+        versucheSchreiben(call, bytes, 1);
+    }
+
+    private void versucheSchreiben(PluginCall call, byte[] bytes, int versuch) {
         zielCharakteristik.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
         zielCharakteristik.setValue(bytes);
         boolean geschrieben = gatt.writeCharacteristic(zielCharakteristik);
         if (!geschrieben) {
-            call.reject("Senden an den Drucker fehlgeschlagen (Bluetooth-Stack hat den Schreibvorgang abgelehnt).");
+            if (versuch < SCHREIB_VERSUCHE) {
+                handler.postDelayed(() -> versucheSchreiben(call, bytes, versuch + 1), SCHREIB_WIEDERHOLUNG_PAUSE_MS * versuch);
+            } else {
+                call.reject("Senden an den Drucker fehlgeschlagen (Bluetooth-Stack hat den Schreibvorgang nach " + SCHREIB_VERSUCHE + " Versuchen abgelehnt).");
+            }
             return;
         }
         sendenAufruf = call;
