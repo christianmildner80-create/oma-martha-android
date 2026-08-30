@@ -174,8 +174,19 @@ public class NiimbotDruckerPlugin extends Plugin {
 
             @Override
             public void onDescriptorWrite(BluetoothGatt g, BluetoothGattDescriptor descriptor, int status) {
+                // 30.08.2026: status wurde bisher NICHT geprueft - die App meldete "verbunden",
+                // sobald ueberhaupt eine onDescriptorWrite-Antwort kam, egal ob das Aktivieren der
+                // Benachrichtigungen wirklich erfolgreich war. Beim ersten echten Testdruck kamen
+                // ueber den gesamten Druckvorgang (mehrere Testdrucke, >20s Polling) NULL Notify-
+                // Antworten vom Drucker an - moeglich, dass dieser Schreibvorgang auf diesem
+                // Geraet/Drucker im Hintergrund fehlschlaegt und bisher unbemerkt blieb. Jetzt wird
+                // bei einem Fehlschlag klar ein Fehler gemeldet statt stillschweigend "verbunden".
                 if (CCCD_UUID.equals(descriptor.getUuid())) {
-                    beendeVerbindenErfolgreich();
+                    if (status == BluetoothGatt.GATT_SUCCESS) {
+                        beendeVerbindenErfolgreich();
+                    } else {
+                        beendeVerbindenMitFehler("Benachrichtigungen konnten am Drucker nicht aktiviert werden (Status " + status + ") - Antworten vom Drucker wären nicht empfangbar gewesen.");
+                    }
                 }
             }
 
