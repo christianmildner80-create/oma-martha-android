@@ -15,6 +15,7 @@ import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
@@ -26,6 +27,8 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 
 import java.util.UUID;
 
@@ -43,7 +46,18 @@ import java.util.UUID;
  * Service e7810a71-73ae-499d-8c15-faa9aef0c3f2, Characteristic bef8d6c9-9c21-4c9e-b632-bd58c1009f9f
  * (dient sowohl zum Schreiben als auch fuer Notify-Antworten).
  */
-@CapacitorPlugin(name = "NiimbotDrucker")
+// 30.08.2026, nach "die Seite schließt sich" auf einem Samsung S23+ (aktuelles Android): auf
+// Android 12+ braucht Bluetooth-Scan/-Verbindung die NEUEN Laufzeit-Berechtigungen BLUETOOTH_SCAN
+// und BLUETOOTH_CONNECT (nicht mehr nur ACCESS_FINE_LOCATION wie auf dem alten TC75x/Android 6) -
+// standen zwar schon im Manifest, wurden aber nirgends im Projekt tatsächlich per Dialog
+// angefragt. Ohne Zusage wirft z.B. scanner.startScan() eine SecurityException, die die App zum
+// Abstürzen bringt. Jetzt über Capacitors eingebauten Berechtigungs-Mechanismus angefragt.
+@CapacitorPlugin(
+    name = "NiimbotDrucker",
+    permissions = {
+        @Permission(strings = { Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT }, alias = "bluetooth")
+    }
+)
 public class NiimbotDruckerPlugin extends Plugin {
 
     private static final UUID SERVICE_UUID = UUID.fromString("e7810a71-73ae-499d-8c15-faa9aef0c3f2");
@@ -72,10 +86,32 @@ public class NiimbotDruckerPlugin extends Plugin {
 
     @PluginMethod
     public void verbinden(PluginCall call) {
-        if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        // Ab Android 12 (API 31) muessen BLUETOOTH_SCAN/BLUETOOTH_CONNECT per echtem Dialog
+        // angefragt werden, sonst wirft der Scan weiter unten eine SecurityException. Auf
+        // aelteren Geraeten (TC75x, Android 6) existieren diese Laufzeit-Berechtigungen gar
+        // nicht als Konzept - dort reicht die alte ACCESS_FINE_LOCATION-Pruefung.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (getPermissionState("bluetooth") != com.getcapacitor.PermissionState.GRANTED) {
+                requestPermissionForAlias("bluetooth", call, "nachBerechtigungVerbinden");
+                return;
+            }
+        } else if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             call.reject("Standort-Berechtigung fehlt - wird für Bluetooth-Suche benötigt, bitte in den Android-App-Einstellungen erlauben");
             return;
         }
+        verbindenNachBerechtigung(call);
+    }
+
+    @PermissionCallback
+    private void nachBerechtigungVerbinden(PluginCall call) {
+        if (getPermissionState("bluetooth") != com.getcapacitor.PermissionState.GRANTED) {
+            call.reject("Bluetooth-Berechtigung wurde nicht erteilt - ohne sie kann nicht nach dem Drucker gesucht werden.");
+            return;
+        }
+        verbindenNachBerechtigung(call);
+    }
+
+    private void verbindenNachBerechtigung(PluginCall call) {
         trenneAlteVerbindung();
 
         BluetoothManager bluetoothManager = (BluetoothManager) getContext().getSystemService(Context.BLUETOOTH_SERVICE);
