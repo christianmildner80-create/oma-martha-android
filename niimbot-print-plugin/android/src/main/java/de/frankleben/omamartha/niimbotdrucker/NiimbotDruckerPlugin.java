@@ -156,11 +156,37 @@ public class NiimbotDruckerPlugin extends Plugin {
                     return;
                 }
                 BluetoothGattService dienst = g.getService(SERVICE_UUID);
-                BluetoothGattCharacteristic charakteristik = dienst != null ? dienst.getCharacteristic(CHAR_UUID) : null;
-                if (charakteristik == null) {
+                if (dienst == null) {
                     beendeVerbindenMitFehler("Erwarteter Bluetooth-Dienst am Drucker nicht gefunden - falsches Gerät oder anderes Modell?");
                     return;
                 }
+                // 30.08.2026, nach "kommt trotzdem nur ein leeres Etikett" trotz nachweislich
+                // erfolgreicher Notify-Aktivierung (siehe onDescriptorWrite-Fix): die feste
+                // CHAR_UUID war eine Annahme aus fruehrer Recherche. Die echte Referenz
+                // niimbluelib legt sich NICHT auf eine feste UUID fest, sondern sucht dynamisch
+                // die Characteristic im Service, die sowohl NOTIFY als auch WRITE_NO_RESPONSE
+                // unterstuetzt - genau das jetzt hier nachgebaut, mit Fallback auf die alte feste
+                // UUID falls die Suche nichts Passendes findet (z.B. anderes Druckermodell).
+                BluetoothGattCharacteristic charakteristik = null;
+                for (BluetoothGattCharacteristic kandidat : dienst.getCharacteristics()) {
+                    int eigenschaften = kandidat.getProperties();
+                    boolean kannNotify = (eigenschaften & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0;
+                    boolean kannSchreiben = (eigenschaften & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0;
+                    if (kannNotify && kannSchreiben) {
+                        charakteristik = kandidat;
+                        break;
+                    }
+                }
+                if (charakteristik == null) {
+                    charakteristik = dienst.getCharacteristic(CHAR_UUID);
+                }
+                if (charakteristik == null) {
+                    beendeVerbindenMitFehler("Keine passende Bluetooth-Characteristic (Notify+Write) am Drucker gefunden - falsches Gerät oder anderes Modell?");
+                    return;
+                }
+                JSObject gefundenDaten = new JSObject();
+                gefundenDaten.put("characteristicUuid", charakteristik.getUuid().toString());
+                notifyListeners("characteristicGefunden", gefundenDaten);
                 zielCharakteristik = charakteristik;
                 g.setCharacteristicNotification(charakteristik, true);
                 BluetoothGattDescriptor cccd = charakteristik.getDescriptor(CCCD_UUID);
