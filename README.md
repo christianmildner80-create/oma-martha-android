@@ -22,6 +22,14 @@ Blob-Download fuer Beweisfotos funktionieren im WebView der nativen App nicht zu
 "das läuft über die apk" war die Ursache) - genutzt in
 `modules/beweisfotos/index.php` fuer echtes Herunterladen/Teilen innerhalb der App.
 
+Außerdem `@capacitor/app` (Christian, 12.09.2026: "wenn ich die zurück Taste am TC drücke
+minimiert sich die apk", egal wie viele Seiten schon durchgeklickt) - ohne dieses Plugin schliesst/
+minimiert Capacitor die App bei JEDEM Zurück-Tastendruck, OHNE die WebView-History zu prüfen (kein
+History-Bug, sondern Standardverhalten ohne registrierten `backButton`-Listener). Der eigentliche
+Listener sitzt in `assets/js/backbutton_handler.js` auf der Webseite (nicht hier in der
+App-Huelle) - navigiert per `window.history.back()` zurück, wenn `canGoBack` true ist, sonst
+weiterhin `App.minimizeApp()`.
+
 ## Weg 1: Kostenlos ueber GitHub Actions bauen lassen (empfohlen, kein eigener PC noetig)
 
 Dieses Verzeichnis enthaelt `.github/workflows/build-apk.yml` - baut die APK automatisch bei
