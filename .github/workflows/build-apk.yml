@@ -41,6 +41,11 @@ jobs:
       - name: Minimale Android-Version auf 23 setzen (Zebra TC75x = Android 6.0)
         run: sed -i "s/minSdkVersion = .*/minSdkVersion = 23/" android/variables.gradle
 
+      - name: Build-Nummer als versionCode/versionName setzen (fuer den Update-Hinweis in der App)
+        run: |
+          sed -i "s/versionCode .*/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i "s/versionName .*/versionName \"${{ github.run_number }}\"/" android/app/build.gradle
+
       - name: App-Icon aus assets/icon.png generieren
         run: npx @capacitor/assets generate --android
 
@@ -61,5 +66,6 @@ jobs:
         run: |
           curl -sf -X POST \
             -H "X-Upload-Secret: ${{ secrets.APK_UPLOAD_SECRET }}" \
+            -H "X-Apk-Build: ${{ github.run_number }}" \
             --data-binary @android/app/build/outputs/apk/debug/app-debug.apk \
             https://oma-martha-frankleben.de/imbiss/modules/it_soloution/apk_upload.php

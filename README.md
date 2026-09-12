@@ -30,6 +30,14 @@ Listener sitzt in `assets/js/backbutton_handler.js` auf der Webseite (nicht hier
 App-Huelle) - navigiert per `window.history.back()` zurück, wenn `canGoBack` true ist, sonst
 weiterhin `App.minimizeApp()`.
 
+**Update-Hinweis (12.09.2026):** Christian will die APK evtl. an Kollegen ausrollen - die sollen
+sehen, wenn eine neuere Version verfuegbar ist. Der Workflow setzt `versionCode`/`versionName` in
+`android/app/build.gradle` jetzt auf `${{ github.run_number }}` (steigt automatisch bei jedem
+Lauf, kein manueller Bump noetig) und schickt sie beim Hochladen als `X-Apk-Build`-Header mit an
+`apk_upload.php`. Die Webseite vergleicht das dort gespeicherte Build-Nummer (`apk_build.php`) mit
+der gerade installierten (`App.getInfo().build`, `@capacitor/app`) und zeigt bei Unterschied ein
+Icon im Footer (`assets/js/apk_update_check.js` im imbiss-Repo, nicht hier).
+
 ## Weg 1: Kostenlos ueber GitHub Actions bauen lassen (empfohlen, kein eigener PC noetig)
 
 Dieses Verzeichnis enthaelt `.github/workflows/build-apk.yml` - baut die APK automatisch bei
