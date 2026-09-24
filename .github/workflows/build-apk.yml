@@ -41,6 +41,18 @@ jobs:
       - name: Minimale Android-Version auf 23 setzen (Zebra TC75x = Android 6.0)
         run: sed -i "s/minSdkVersion = .*/minSdkVersion = 23/" android/variables.gradle
 
+      - name: Berechtigung fuer exakte Erinnerungs-Alarme ergaenzen (24.09.2026)
+        # Christian: "warum meldet sich das TC52/Handy nicht puenktlich mit den Messpunkten" -
+        # Capacitor LocalNotifications.schedule() nutzt intern AlarmManager, ab Android 12 braucht
+        # ein EXAKTER Alarm (statt der vom System frei verschiebbaren Standard-Variante) diese
+        # Berechtigung explizit im Manifest, sonst verzoegert das Betriebssystem geplante
+        # Erinnerungen zusaetzlich zur Akku-Optimierung. SCHEDULE_EXACT_ALARM statt USE_EXACT_ALARM
+        # gewaehlt (Letzteres verlangt eine Play-Store-Sonderfreigabe als "Wecker/Kalender-App",
+        # fuer diese intern verteilte Debug-APK nicht relevant/erreichbar) - Nutzer muss die
+        # Berechtigung einmalig unter Einstellungen -> Apps -> Sonderzugriff -> Alarme & Erinnerungen
+        # freigeben, aehnlich wie bei der Akku-Optimierung.
+        run: sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a\    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />' android/app/src/main/AndroidManifest.xml
+
       - name: Build-Nummer als versionCode/versionName setzen (fuer den Update-Hinweis in der App)
         run: |
           sed -i "s/versionCode .*/versionCode ${{ github.run_number }}/" android/app/build.gradle
