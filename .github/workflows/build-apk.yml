@@ -84,6 +84,23 @@ jobs:
           sed -i "s/versionCode .*/versionCode ${{ github.run_number }}/" android/app/build.gradle
           sed -i "s/versionName .*/versionName \"${{ github.run_number }}\"/" android/app/build.gradle
 
+      - name: Force-Dark auf Aktivitaets-Ebene abschalten (24.09.2026)
+        # Christian: "die Versionsnummer ist im Footer immer noch nicht da" (Samsung S23+) - der
+        # CSS-Fix (color-scheme:light in style.css + Meta-Tag) reicht bei manchen WebViews NICHT
+        # aus, weil Samsung/Android teils auf Aktivitaets-/System-Ebene zwangsverdunkelt (Force
+        # Dark), unabhaengig von der Seiten-eigenen CSS-Angabe - das ist eine NATIVE Einstellung
+        # der App-Huelle, keine reine Web-Angelegenheit. Ergaenzt android:forceDarkAllowed="false"
+        # in JEDEM der 3 App-Themes (API 29+, aeltere Android-Versionen wie auf dem TC75x
+        # ignorieren das Attribut einfach, kein Risiko dort) - deaktiviert die automatische
+        # Farbumkehr fuer die komplette Activity. Bewusst alle 3 Themes statt nur eines: laut
+        # Capacitor-Standardvorlage traegt <application> selbst "AppTheme", <activity
+        # android:name=".MainActivity"> aber "AppTheme.NoActionBarLaunch" (Splash-Theme) -
+        # ob/wann Capacitor zur Laufzeit zusaetzlich auf "AppTheme.NoActionBar" umschaltet, ist
+        # von hier aus nicht sicher nachvollziehbar. Android-Styles mit eigenem "parent"-Attribut
+        # erben NICHT automatisch von der Basis gleichen Namens trotz Punkt-Notation - alle 3
+        # muessen daher einzeln getroffen werden, keine reicht allein sicher aus.
+        run: sed -i '/<style name="AppTheme/a\        <item name="android:forceDarkAllowed">false</item>' android/app/src/main/res/values/styles.xml
+
       - name: DIAGNOSE - Tastendruck-Keycode als Toast anzeigen (24.09.2026, TEMPORAER)
         # Christian: "oberhalb des Scan-Triggers am TC52 ist eine Taste ohne Funktion, wofuer
         # koennte ich die benutzen" -> soll fest auf den Debug-Modus-Toggle gelegt werden, dafuer
