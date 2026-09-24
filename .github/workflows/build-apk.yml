@@ -65,6 +65,20 @@ jobs:
           sed -i "s/versionCode .*/versionCode ${{ github.run_number }}/" android/app/build.gradle
           sed -i "s/versionName .*/versionName \"${{ github.run_number }}\"/" android/app/build.gradle
 
+      - name: DIAGNOSE - Tastendruck-Keycode als Toast anzeigen (24.09.2026, TEMPORAER)
+        # Christian: "oberhalb des Scan-Triggers am TC52 ist eine Taste ohne Funktion, wofuer
+        # koennte ich die benutzen" -> soll fest auf den Debug-Modus-Toggle gelegt werden, dafuer
+        # muss aber erst der genaue Android-Keycode dieser Taste bekannt sein (je Zebra-Modell/
+        # -Konfiguration unterschiedlich, raten waere riskant - koennte sonst z.B. mit dem
+        # echten Scan-Trigger kollidieren). Kopiert eine feste, im Repo hinterlegte MainActivity
+        # ueber die von "cap add android" generierte Standard-Version drueber (gleiches Prinzip
+        # wie der feste Debug-Keystore oben) - zeigt bei JEDEM Tastendruck kurz den Keycode als
+        # natives Android-Toast an, greift aber NICHT in die Verarbeitung ein (immer
+        # super.dispatchKeyEvent() mit dessen echtem Ergebnis), der normale Scan-Trigger/
+        # Zurueck-Taste etc. funktionieren dabei unveraendert weiter. Nach Identifikation durch
+        # die feste Debug-Modus-Verdrahtung ersetzen, siehe imbiss_tc52_freie_taste_debug_modus.md.
+        run: cp android-overrides/MainActivity.diagnose.java android/app/src/main/java/de/frankleben/omamartha/MainActivity.java
+
       - name: App-Icon aus assets/icon.png generieren
         run: npx @capacitor/assets generate --android
 
