@@ -45,6 +45,25 @@ jobs:
       - name: Android-Projekt generieren (legt android/ an)
         run: npx cap add android
 
+      - name: Debug-Keystore EXPLIZIT im Gradle-Signing verdrahten (24.09.2026)
+        # Christian: "ich muss auf dem Handy immer erst die bestehende Build deinstallieren,
+        # bevor ich die neue installieren kann" - obwohl der feste Keystore oben schon nach
+        # ~/.android/debug.keystore kopiert wird. Direkte Pruefung der zuletzt gebauten APK
+        # (Build 24, Zertifikat entpackt+mit openssl gelesen) zeigte: "Not Before" = exakte
+        # Build-Uhrzeit UND Subject "CN=Android Debug, O=Android, C=US" - das ist der von Android
+        # Gradle Plugin SELBST automatisch neu generierte Debug-Schluessel, NICHT der feste
+        # "CN=Oma Martha Debug"-Schluessel aus dem Repo. Der ~/.android/debug.keystore-Pfad wird
+        # von AGP fuer dieses Projekt aus unbekanntem Grund offenbar nicht zuverlaessig genutzt -
+        # deshalb jetzt zusaetzlich EXPLIZIT und eindeutig verdrahtet: Keystore direkt neben
+        # build.gradle legen (kein globaler Pfad mehr noetig) und einen signingConfigs.debug-Block
+        # mit exakt diesem Pfad einfuegen - ein per Namen "debug" definierter signingConfig
+        # ersetzt bei AGP automatisch den eingebauten Standard, ohne dass buildTypes extra
+        # angepasst werden muss. android-overrides/signing.gradle.snippet enthaelt den Block,
+        # wird hier direkt nach der Zeile "android {" eingefuegt.
+        run: |
+          cp oma-martha-debug.keystore android/app/oma-martha-debug.keystore
+          sed -i '/^android {/r android-overrides/signing.gradle.snippet' android/app/build.gradle
+
       - name: Minimale Android-Version auf 23 setzen (Zebra TC75x = Android 6.0)
         run: sed -i "s/minSdkVersion = .*/minSdkVersion = 23/" android/variables.gradle
 
