@@ -25,7 +25,14 @@ jobs:
           java-version: 17
 
       - name: Android SDK einrichten
-        uses: android-actions/setup-android@v3
+        # v3 (24.09.2026 zuletzt aktualisiert 09.11.2024) versucht intern noch das laengst aus dem
+        # Android-SDK-Repository entfernte Legacy-Paket "tools" zu installieren und bricht dabei mit
+        # "Failed to find package 'tools'" komplett ab - unabhaengig von jeder Code-Aenderung hier,
+        # reine Umgebungs-Drift (Google hat das Paket zwischen dem letzten erfolgreichen Build am
+        # 30.08.2026 und heute entfernt). v4 (zuletzt 17.09.2026) hat exakt diesen Fall bereits als
+        # bekannten Sonderfall behandelt (übersprungen statt Abbruch) - gleiche Inputs/Outputs wie
+        # v3, daher ohne weitere Anpassungen kompatibel.
+        uses: android-actions/setup-android@v4
 
       - name: Festen Debug-Keystore einsetzen (sonst signiert jeder Build anders und Updates schlagen fehl)
         run: |
