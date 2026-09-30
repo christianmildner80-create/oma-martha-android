@@ -79,6 +79,20 @@ jobs:
         # freigeben, aehnlich wie bei der Akku-Optimierung.
         run: sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a\    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />' android/app/src/main/AndroidManifest.xml
 
+      - name: Kamera-App fuer Foto-Aufnahmen sichtbar machen (30.09.2026)
+        # Christian: "Die Kamera geht nicht auf wenn ich mit dem TC52 auf Datei hinzufuegen klicke"
+        # (Beweisfotos, <input type="file" accept="image/*" capture="environment">). Capacitors
+        # BridgeWebChromeClient.showImageCapturePicker() prueft per resolveActivity(), ob es eine
+        # App fuer ACTION_IMAGE_CAPTURE gibt - ab Android 11 (Paket-Sichtbarkeit) liefert das ohne
+        # passenden <queries>-Eintrag im Manifest immer null, Capacitor faellt dann kommentarlos
+        # auf die Dateiauswahl zurueck. Die Standardvorlage von "cap add android" enthaelt den
+        # Eintrag nicht (den bringt sonst nur das @capacitor/camera-Plugin mit). Bewusst KEINE
+        # CAMERA-Berechtigung ergaenzt: die Aufnahme laeuft ueber die Kamera-App des Geraets,
+        # nicht ueber eigenen Kamera-Zugriff - mit deklarierter, aber nicht erteilter
+        # CAMERA-Berechtigung wuerde Android den Intent sogar verweigern. Betrifft genauso die
+        # Brevet-Fotos (Tauchbasis) und das Foto im Kassensturz.
+        run: sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/r android-overrides/queries.manifest.snippet' android/app/src/main/AndroidManifest.xml
+
       - name: Build-Nummer als versionCode/versionName setzen (fuer den Update-Hinweis in der App)
         run: |
           sed -i "s/versionCode .*/versionCode ${{ github.run_number }}/" android/app/build.gradle
