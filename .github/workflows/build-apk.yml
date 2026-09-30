@@ -93,6 +93,17 @@ jobs:
         # Brevet-Fotos (Tauchbasis) und das Foto im Kassensturz.
         run: sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/r android-overrides/queries.manifest.snippet' android/app/src/main/AndroidManifest.xml
 
+      - name: Standort-Berechtigung fuer GPS im Beweisfoto ergaenzen (30.09.2026)
+        # Christian: "kannst du auch noch den genauen Standort an Hand der GPS Daten hinzufuegen
+        # zum Foto". Die Webseite nutzt navigator.geolocation - Capacitors
+        # BridgeWebChromeClient.onGeolocationPermissionsShowPrompt() fragt dafuer die
+        # Android-Berechtigungen ACCESS_COARSE/FINE_LOCATION an, was ohne Deklaration im Manifest
+        # sofort abgelehnt wird (die Seite bekommt dann PERMISSION_DENIED). Beim ersten Aufruf
+        # fragt Android einmalig "Standortzugriff erlauben?". Gilt auch fuer die schon vorhandene
+        # GPS-Standort-Erkennung auf der Startseite/im Standort-Check-in. uses-feature mit
+        # required=false, damit die App auch auf Geraeten ohne GPS installierbar bleibt.
+        run: sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/r android-overrides/standort.manifest.snippet' android/app/src/main/AndroidManifest.xml
+
       - name: Build-Nummer als versionCode/versionName setzen (fuer den Update-Hinweis in der App)
         run: |
           sed -i "s/versionCode .*/versionCode ${{ github.run_number }}/" android/app/build.gradle
