@@ -6,8 +6,8 @@ import android.widget.Toast;
 import com.getcapacitor.BridgeActivity;
 
 /**
- * Freie TC52-Taste (oberhalb des Scan-Triggers, Keycode 104): oeffnet die Seite "Fass anschliessen" der
- * Web-App (Christian, 09.10.2026). ACHTUNG: Keycode 10036 ist die SCAN-Taste und darf nie belegt werden.
+ * Freie TC52-Tasten (Christian, 09.10.2026): Keycode 104 oeffnet die Seite "Fass anschliessen",
+ * Keycode 103 die Seite "Abschreibung" der Web-App. ACHTUNG: Keycode 10036 ist die SCAN-Taste und darf nie belegt werden.
  *
  * Tastenerkennung (Christian, 09.10.2026: "schalte die Tastenerkennung nochmal an"): Ist in der Web-App der
  * Debug-Modus an (localStorage "debug_modus" = "1", Umschalter 🐞 in der Fusszeile), zeigt jeder Tastendruck
@@ -16,6 +16,7 @@ import com.getcapacitor.BridgeActivity;
  */
 public class MainActivity extends BridgeActivity {
     private static final int FASS_TASTE_KEYCODE = 104;
+    private static final int ABSCHREIBUNG_TASTE_KEYCODE = 103;
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
@@ -30,9 +31,10 @@ public class MainActivity extends BridgeActivity {
                     }
                 });
         }
-        if (event.getKeyCode() == FASS_TASTE_KEYCODE) {
+        if (event.getKeyCode() == FASS_TASTE_KEYCODE || event.getKeyCode() == ABSCHREIBUNG_TASTE_KEYCODE) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0 && web != null) {
-                web.evaluateJavascript("window.location.href = '/imbiss/modules/inventur/fass_anschluss.php';", null);
+                String ziel = event.getKeyCode() == FASS_TASTE_KEYCODE ? "modules/inventur/fass_anschluss.php" : "modules/abschreibung/index.php";
+                web.evaluateJavascript("window.location.href = '/imbiss/" + ziel + "';", null);
             }
             return true;
         }
