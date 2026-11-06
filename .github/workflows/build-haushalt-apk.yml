@@ -1,0 +1,82 @@
+name: Haushalt-APK bauen
+
+# Zweite App im selben Repo (Christian, 06.11.2026): Huelle fuer die private Haushalt-App
+# (https://oma-martha-frankleben.de/haushalt/). Gleicher Ablauf wie build-apk.yml, nur im Ordner
+# haushalt/ und mit eigener App-ID; baut nur, wenn sich haushalt/** oder das Niimbot-Plugin aendert.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'haushalt/**'
+      - 'niimbot-print-plugin/**'
+      - '.github/workflows/build-haushalt-apk.yml'
+  workflow_dispatch: {}
+
+defaults:
+  run:
+    working-directory: haushalt
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Android SDK einrichten
+        uses: android-actions/setup-android@v4
+
+      - name: Abhaengigkeiten installieren
+        run: npm install
+
+      - name: Android-Projekt generieren (legt haushalt/android/ an)
+        run: npx cap add android
+
+      - name: Festen Debug-Keystore verdrahten (sonst schlagen Updates fehl)
+        run: |
+          cp ../oma-martha-debug.keystore android/app/oma-martha-debug.keystore
+          sed -i '/^android {/r ../android-overrides/signing.gradle.snippet' android/app/build.gradle
+
+      - name: Minimale Android-Version 23 (TC75x)
+        run: sed -i "s/minSdkVersion = .*/minSdkVersion = 23/" android/variables.gradle
+
+      - name: Build-Nummer als versionCode/versionName
+        run: |
+          sed -i "s/versionCode .*/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i "s/versionName .*/versionName \"${{ github.run_number }}\"/" android/app/build.gradle
+
+      - name: Force-Dark abschalten (Samsung)
+        run: sed -i '/<style name="AppTheme/a\        <item name="android:forceDarkAllowed">false</item>' android/app/src/main/res/values/styles.xml
+
+      - name: App-Icon aus haushalt/assets/icon.png generieren
+        run: npx @capacitor/assets generate --android
+
+      - name: Konfiguration synchronisieren
+        run: npx cap sync android
+
+      - name: APK bauen (Debug)
+        working-directory: haushalt/android
+        run: ./gradlew assembleDebug
+
+      - name: APK als Download bereitstellen
+        uses: actions/upload-artifact@v4
+        with:
+          name: haushalt-app-debug
+          path: haushalt/android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: APK auf festen Download-Link hochladen
+        run: |
+          curl -sf -X POST \
+            -H "X-Upload-Secret: ${{ secrets.APK_UPLOAD_SECRET }}" \
+            -H "X-Apk-Build: ${{ github.run_number }}" \
+            -H "X-Apk-App: haushalt" \
+            --data-binary @android/app/build/outputs/apk/debug/app-debug.apk \
+            https://oma-martha-frankleben.de/imbiss/modules/it_soloution/apk_upload.php

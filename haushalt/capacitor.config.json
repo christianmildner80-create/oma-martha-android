@@ -1,0 +1,12 @@
+{
+  "appId": "de.frankleben.haushalt",
+  "appName": "Haushalt",
+  "webDir": "www",
+  "server": {
+    "url": "https://oma-martha-frankleben.de/haushalt/",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

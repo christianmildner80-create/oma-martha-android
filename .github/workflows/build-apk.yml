@@ -7,6 +7,11 @@ name: Android-APK bauen
 on:
   push:
     branches: [main]
+    # 06.11.2026: haushalt/ ist eine eigene App mit eigenem Workflow (build-haushalt-apk.yml) -
+    # Aenderungen dort sollen die Imbiss-APK nicht neu bauen.
+    paths-ignore:
+      - 'haushalt/**'
+      - '.github/workflows/build-haushalt-apk.yml'
   workflow_dispatch: {}
 
 jobs:
